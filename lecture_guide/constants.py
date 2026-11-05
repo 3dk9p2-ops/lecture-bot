@@ -1,30 +1,32 @@
 """Prompts, CSS and limits for the lecture study-guide pipeline."""
 
 SYSTEM_PROMPT = (
-    "You convert a university lecture (Medical Laboratory Techniques, Iraq) into a final BILINGUAL study "
-    "handout: the English content of the lecture, organized, with a simple Iraqi-dialect Arabic explanation "
-    "under each English part. Rules: (1) Cover EVERYTHING in the lecture, in its order, nothing important "
-    "left out. (2) The English text stays English and follows the lecture's wording. The Arabic ('ar' / "
-    "'items_ar' / '_ar' fields) is a clear, simple Iraqi-dialect explanation, NOT a literal word-for-word "
-    "translation; keep ALL scientific terms, test/drug names, abbreviations, units and numbers in English "
-    "inside the Arabic sentence. (3) Never invent facts or numbers; use only the lecture's values, cut-offs "
-    "and wording. If something is not stated, skip it. (4) Wrap the exam-critical terms, numbers, times, "
-    "volumes, wavelengths and key facts in **double asterisks** (in both English and Arabic) so they get "
-    "highlighted. Highlight a lot but not entire sentences. (5) Use tables for comparisons, steps with "
-    "parameters, normal values and causes; in table cells and headers write 'English ||| Arabic' when an "
-    "Arabic hint helps. (6) Include the WHY behind each rule when the lecture states it. (7) Put worked "
-    "calculation examples inside formula blocks. (8) IMAGES: the lecture text contains markers like "
-    "[IMAGE img_3] and the pictures are attached. Insert an image block (with a short English caption and "
-    "Arabic caption) at the right place ONLY for important scientific figures: diagrams, mechanisms, "
-    "pathways, graphs, instruments, microscopy, flow charts, tables-as-pictures. Skip logos, icons, "
-    "decorations, photos of people and repeated pictures. Use only the given image ids. (9) For a bullet/numbered item that is just a name, term or example (e.g. an enzyme name), write an EMPTY string in its items_ar slot: Arabic is only for items that need an explanation. (10) End with a "
-    "quick_revision section of 6-10 one-line points. Return JSON only."
+    "You convert a university lecture (Medical Laboratory Techniques, Iraq) into a study handout in two "
+    "languages. Rules: (1) Cover EVERYTHING in the lecture, in its order, nothing important left out. "
+    "(2) The English text stays English and follows the lecture's wording. Every Arabic field ('ar', "
+    "'items_ar', 'heading_ar', 'title_ar', 'caption_ar', 'example_ar', or an 'English ||| Arabic' cell) is a "
+    "LITERAL translation of the English text next to it: sentence for sentence, same meaning, same order. "
+    "Do not explain, do not add or remove information, do not paraphrase, do not use dialect. Keep scientific "
+    "terms, abbreviations, drug and test names, units and numbers in English inside the Arabic. "
+    "(3) Never invent facts or numbers; use only the lecture's values, cut-offs and wording. If something is "
+    "not stated, skip it. (4) Wrap only the exam-critical terms, numbers, times, volumes, wavelengths and key "
+    "facts in **double asterisks** in the ENGLISH text (they become bold). Bold a lot of short terms, never "
+    "whole sentences. Do not put asterisks in Arabic fields. (5) Use tables for comparisons, steps with "
+    "parameters, normal values and causes; in table cells and headers write 'English ||| Arabic'. (6) Include "
+    "the WHY behind each rule when the lecture states it. (7) Put worked calculation examples inside formula "
+    "blocks. (8) IMAGES: the lecture text contains markers like [IMAGE img_3] and the pictures are attached. "
+    "Insert an image block (with a short English caption and a literal Arabic caption) at the right place ONLY "
+    "for important scientific figures: diagrams, mechanisms, pathways, graphs, instruments, microscopy, flow "
+    "charts, tables-as-pictures. Skip logos, icons, decorations, photos of people and repeated pictures. Use "
+    "only the given image ids. (9) For a bullet or numbered item that is just a name, term or code (for example "
+    "an enzyme name), write an EMPTY string in its items_ar slot. (10) End with a quick_revision section of "
+    "6-10 one-line points. Return JSON only."
 )
 
 SCHEMA_DESCRIPTION = """JSON schema (return exactly this shape, nothing else):
 { "title": str, "title_ar": str, "subtitle": str,
   "sections": [ { "heading": str, "heading_ar": str, "blocks": [ block, ... ] } ] }
-Block types (field "type"); every "ar" is the Iraqi-dialect Arabic explanation of the English next to it:
+Block types (field "type"). Every "ar" field is the LITERAL Arabic translation of the English text next to it:
 - {"type":"paragraph","text":str,"ar":str}
 - {"type":"subheading","text":str,"ar":str}
 - {"type":"bullets","items":[str],"items_ar":[str]}      (items_ar aligned 1:1 with items)
@@ -44,9 +46,9 @@ CHUNK_NOTE = (
 )
 
 REVISION_PROMPT = (
-    "Below is a condensed outline of a finished bilingual study guide. Return JSON only: "
+    "Below is a condensed outline of a finished study guide. Return JSON only: "
     '{"items": [6 to 10 one-line English quick-revision points, each wrapping the critical term/number in '
-    '**double asterisks**], "items_ar": [the same points as short Iraqi-dialect Arabic, scientific terms '
+    '**double asterisks**], "items_ar": [the same points as a literal Arabic translation, scientific terms '
     "kept in English, same order]}. Use only facts that appear in the outline."
 )
 
@@ -68,10 +70,11 @@ FIXED_CSS = """
 @page{size:A4;margin:16mm 15mm}
 body{font-family:"Liberation Sans",Arial,Helvetica,sans-serif;font-size:11.5pt;line-height:1.5;color:#1a1a1a}
 h1{font-size:22pt;margin:0 0 2pt;color:#0b3d6b}
-.sub{color:#555;font-size:10pt;margin-bottom:12pt;border-bottom:3px solid #0b3d6b;padding-bottom:8pt}
+.sub{color:#555;font-size:10pt;margin-bottom:8pt;border-bottom:3px solid #0b3d6b;padding-bottom:8pt}
+.sig{font-size:9.5pt;color:#0b3d6b;background:#f3f7fb;border:1px solid #9bbbd8;border-radius:3pt;padding:3pt 8pt;margin:0 0 12pt;display:inline-block}
 h2{font-size:15pt;background:#0b3d6b;color:#fff;padding:5pt 10pt;border-radius:4pt;margin:18pt 0 8pt;page-break-after:avoid}
 h3{font-size:12.5pt;color:#0b3d6b;border-bottom:1.5px solid #9bbbd8;padding-bottom:2pt;margin:12pt 0 6pt;page-break-after:avoid}
-mark{background:#fff176;padding:0 2px;border-radius:2px;font-weight:bold}
+strong{font-weight:bold;color:#0b3d6b}
 ol,ul{margin:4pt 0 6pt 0;padding-left:20pt}li{margin-bottom:3pt}
 .key{border-left:5px solid #e65100;background:#fff3e0;padding:6pt 10pt;margin:8pt 0;page-break-inside:avoid}
 .key b:first-child{color:#e65100}
@@ -85,17 +88,17 @@ tr:nth-child(even) td{background:#f3f7fb}
 td:first-child{font-weight:bold}
 .formula{text-align:center;font-size:13pt;font-weight:bold;background:#e8f5e9;border:1.5px solid #2e7d32;padding:7pt;margin:8pt 0;border-radius:4pt}
 
-/* --- bilingual + figures (additions) --- */
+/* --- bilingual + figures --- */
 h1,h2,h3{break-after:avoid-page}
 h2+*,h3+*{break-before:avoid-page}
-.ar{direction:rtl;text-align:right;unicode-bidi:plaintext;font-family:"Noto Naskh Arabic","Noto Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif;font-size:12.5pt;line-height:1.8;color:#1f3d2b;background:#eef7f0;border-right:4px solid #2e7d32;border-radius:3pt;padding:4pt 9pt;margin:4pt 0 6pt}
+.ar{direction:rtl;text-align:right;unicode-bidi:plaintext;font-family:"Noto Naskh Arabic","Noto Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif;font-size:12.5pt;line-height:1.8;color:#222;background:#f4f6f9;border-right:4px solid #5b7a99;border-radius:3pt;padding:4pt 9pt;margin:4pt 0 6pt}
 li{break-inside:avoid}
 p{break-inside:avoid}
 li .ar{font-size:12pt;padding:2pt 8pt;margin:2pt 0 5pt}
 h1 .ar,h2 .ar,h3 .ar{display:block;font-weight:normal;font-size:.85em;background:none;border:0;padding:0;margin:2pt 0 0}
 h2 .ar{color:#dbe8f5}
 h1 .ar{color:#444}
-h3 .ar{color:#1f5f3a}
+h3 .ar{color:#3d5a73}
 .key .ar,.box .ar,.red .ar{background:none;border-right:0;border-top:1px dashed #bbb;border-radius:0;margin:5pt 0 0;padding:4pt 0 0}
 td .ar,th .ar{font-size:10.5pt;line-height:1.55;background:none;border:0;padding:0;margin:1pt 0 0}
 th .ar{color:#dbe8f5}
@@ -116,3 +119,9 @@ TG_MESSAGE_MAX = 4000
 TG_DOWNLOAD_MAX = 20 * 1024 * 1024   # Bot API getFile limit
 TG_UPLOAD_MAX = 50 * 1024 * 1024     # Bot API sendDocument limit
 SUPPORTED_EXT = (".docx", ".pptx", ".pdf")
+
+# Kept for compatibility with older code paths (not used by the current pipeline).
+ARABIC_PROMPT = (
+    "Translate the lecture below into Arabic, sentence by sentence, literally. Keep scientific terms, "
+    "numbers and units in English. Plain text only."
+)

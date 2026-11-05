@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -26,13 +27,25 @@ class Result:
     units: list
 
 
-def build_pdf(src_path: str, out_pdf: str, progress: Callable[[str], None] = lambda m: None) -> Result:
+_SIG_LABEL = re.compile(r"^\s*(ترجمة|translated by|translator|by)\s*[:：]\s*", re.I)
+
+
+def parse_caption(caption: Optional[str]) -> tuple[str, str]:
+    """Line 1 = doctor name (filing). Line 2 = translator name shown on the PDF (optional label allowed)."""
+    lines = [ln.strip() for ln in (caption or "").splitlines() if ln.strip()]
+    doctor = lines[0] if lines else ""
+    signature = _SIG_LABEL.sub("", lines[1]).strip() if len(lines) > 1 else ""
+    return doctor, signature
+
+
+def build_pdf(src_path: str, out_pdf: str, progress: Callable[[str], None] = lambda m: None,
+              signature: str = "") -> Result:
     """Pure pipeline (no Telegram): used by the bot and by the test script."""
     progress("Reading the file...")
     ex = extract_any(src_path, ocr=ocr_image, progress=progress)
     guide = generate_study_guide(ex, progress)
     progress("Rendering PDF...")
-    render_pdf(guide, out_pdf, ex.images)
+    render_pdf(guide, out_pdf, ex.images, signature)
     return Result(guide, out_pdf, ex.units)
 
 
@@ -58,7 +71,8 @@ def handle_lecture(tg: Telegram, chat_id: int, file_id: str, file_name: str, fil
             ex = extract_any(src, ocr=ocr_image, progress=progress)
             guide = generate_study_guide(ex, progress)
             progress("Rendering PDF...")
-            render_pdf(guide, out_pdf, ex.images)
+            _doctor, signature = parse_caption(caption)
+            render_pdf(guide, out_pdf, ex.images, signature)
 
             safe_title = filing.safe_name(guide.title, "Study Guide")
             tg.send_document(chat_id, out_pdf, safe_title + ".pdf", caption=guide.title)

@@ -1,4 +1,4 @@
-"""JSON -> HTML (Jinja2, escaped) -> PDF (Playwright chromium, A4). Bilingual EN + Iraqi Arabic."""
+"""JSON -> HTML (Jinja2, escaped) -> PDF (Playwright chromium, A4). English + literal Arabic."""
 from __future__ import annotations
 
 import base64
@@ -15,9 +15,9 @@ _BOLD = re.compile(r"\*\*(.+?)\*\*", re.S)
 
 
 def hl(text) -> Markup:
-    """Escape everything, then turn **bold** markers into <mark>. Stray ** are dropped."""
+    """Escape everything, then turn **term** into bold text (no highlight). Stray ** are dropped."""
     s = str(escape(str(text if text is not None else "")))
-    s = _BOLD.sub(r"<mark>\1</mark>", s)
+    s = _BOLD.sub(r"<strong>\1</strong>", s)
     return Markup(s.replace("**", ""))
 
 
@@ -27,8 +27,8 @@ def plain(text) -> str:
 
 def ar(text) -> Markup:
     """Arabic line under an English part (empty -> nothing)."""
-    t = str(text or "").strip()
-    return Markup(f'<div class="ar" dir="rtl" lang="ar">{hl(t)}</div>') if t else Markup("")
+    t = str(text or "").replace("**", "").strip()
+    return Markup(f'<div class="ar" dir="rtl" lang="ar">{escape(t)}</div>') if t else Markup("")
 
 
 def cell(text) -> Markup:
@@ -46,6 +46,7 @@ _TEMPLATE = """<!doctype html>
 <style>{{ css }}</style></head><body>
 <h1>{{ g.title|hl }}{{ g.title_ar|ar }}</h1>
 <div class="sub">{{ g.subtitle|hl }}</div>
+{% if signature %}<div class="sig">Translated by: {{ signature }} &nbsp;|&nbsp; <span dir="rtl" lang="ar">تمت الترجمة بواسطة: {{ signature }}</span></div>{% endif %}
 {% for s in g.sections %}
 <h2>{{ loop.index }}. {{ s.heading|hl }}{{ s.heading_ar|ar }}</h2>
 {% for b in s.blocks %}
@@ -77,8 +78,8 @@ def _data_uris(images: Optional[dict]) -> dict:
     return {k: f"data:{r.mime};base64,{base64.b64encode(r.data).decode()}" for k, r in (images or {}).items()}
 
 
-def render_html(guide: StudyGuide, images: Optional[dict] = None) -> str:
-    return _tpl.render(g=guide, css=C.FIXED_CSS, images=_data_uris(images))
+def render_html(guide: StudyGuide, images: Optional[dict] = None, signature: str = "") -> str:
+    return _tpl.render(g=guide, css=C.FIXED_CSS, images=_data_uris(images), signature=signature.strip())
 
 
 def html_to_pdf(html: str, out_path: str) -> str:
@@ -95,5 +96,5 @@ def html_to_pdf(html: str, out_path: str) -> str:
     return out_path
 
 
-def render_pdf(guide: StudyGuide, out_path: str, images: Optional[dict] = None) -> str:
-    return html_to_pdf(render_html(guide, images), out_path)
+def render_pdf(guide: StudyGuide, out_path: str, images: Optional[dict] = None, signature: str = "") -> str:
+    return html_to_pdf(render_html(guide, images, signature), out_path)
