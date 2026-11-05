@@ -10,7 +10,7 @@ from typing import Callable, Optional
 
 from . import config, filing
 from .extract import Unit, extract_any
-from .gemini import generate_study_guide, ocr_image
+from .gemini import GeminiBusy, generate_study_guide, ocr_image, set_notifier
 from .exam import EXAMS
 from .quiz import generate_quiz
 from .render import render_pdf
@@ -61,6 +61,7 @@ def handle_lecture(tg: Telegram, chat_id: int, file_id: str, file_name: str, fil
         else:
             tg.send_message(chat_id, msg)
 
+    set_notifier(progress)          # "Gemini is busy, retrying..." goes to this chat
     try:
         with tempfile.TemporaryDirectory() as tmp:
             src = os.path.join(tmp, "lecture" + os.path.splitext(file_name)[1].lower())
@@ -89,6 +90,11 @@ def handle_lecture(tg: Telegram, chat_id: int, file_id: str, file_name: str, fil
             except Exception as e:
                 log.warning("Quiz failed: %s", e)
                 tg.send_message(chat_id, "The PDF is ready, but I couldn't generate the exam this time.")
+    except GeminiBusy:
+        log.warning("Gemini overloaded; giving up after retries")
+        tg.send_message(chat_id, "Google's AI (Gemini) is overloaded right now, so I couldn't finish. "
+                                 "Please send the file again in a few minutes.\n"
+                                 "خوادم Gemini مزدحمة الآن، أرسل الملف مرة ثانية بعد دقائق.")
     except TelegramError as e:
         log.exception("Telegram error")
         tg.send_message(chat_id, f"Telegram problem: {e}")

@@ -5,6 +5,7 @@ import base64
 import json
 import logging
 import re
+import threading
 import time
 from typing import Callable, Optional
 
@@ -22,6 +23,20 @@ class GeminiError(RuntimeError):
     pass
 
 
+class GeminiBusy(GeminiError):
+    """Google's servers are overloaded or timing out (temporary): worth trying again later."""
+
+
+_local = threading.local()
+BUSY_ROUNDS = 4                 # how many times to retry the whole model list when Google is overloaded
+BUSY_WAIT = (30, 60, 90)        # seconds to wait between those rounds
+
+
+def set_notifier(fn: Optional[Callable[[str], None]]):
+    """Per-thread hook so the bot can tell the user 'Gemini is busy, retrying...'."""
+    _local.notify = fn
+
+
 def _call(parts: list, system: Optional[str] = None, json_mode: bool = True, temperature: float = 0.1) -> str:
     if not config.GEMINI_API_KEY:
         raise GeminiError("GEMINI_API_KEY is not set.")
@@ -32,29 +47,44 @@ def _call(parts: list, system: Optional[str] = None, json_mode: bool = True, tem
     if system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
     last = "unknown error"
-    for model in [config.GEMINI_MODEL] + config.GEMINI_FALLBACKS:
-        for attempt in range(3):
+    saw_transient = False
+    for rnd in range(BUSY_ROUNDS):
+        saw_transient = False
+        for model in [config.GEMINI_MODEL] + config.GEMINI_FALLBACKS:
+            for attempt in range(2):
+                try:
+                    r = requests.post(
+                        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                        headers={"x-goog-api-key": config.GEMINI_API_KEY},
+                        json=body, timeout=config.GEMINI_TIMEOUT)
+                    if r.status_code == 200:
+                        cand = r.json().get("candidates") or []
+                        if cand and cand[0].get("content", {}).get("parts"):
+                            return "".join(p.get("text", "") for p in cand[0]["content"]["parts"])
+                        last = f"{model}: empty response"
+                        break
+                    last = f"{model}: HTTP {r.status_code} {r.text[:200]}"
+                    log.warning("Gemini %s", " ".join(last.split())[:220])
+                    if r.status_code in (500, 503) or (r.status_code == 429 and "quota" not in r.text.lower()):
+                        saw_transient = True
+                        time.sleep(5)                  # temporary overload: one more try, then next model
+                        continue
+                    break  # 400/403/404/quota -> next model
+                except requests.RequestException as e:
+                    saw_transient = True
+                    last = f"{model}: {e}"
+                    time.sleep(2)
+        if not saw_transient or rnd == BUSY_ROUNDS - 1:
+            break
+        wait = BUSY_WAIT[min(rnd, len(BUSY_WAIT) - 1)]
+        notify = getattr(_local, "notify", None)
+        if notify:
             try:
-                r = requests.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                    headers={"x-goog-api-key": config.GEMINI_API_KEY},
-                    json=body, timeout=config.GEMINI_TIMEOUT)
-                if r.status_code == 200:
-                    cand = r.json().get("candidates") or []
-                    if cand and cand[0].get("content", {}).get("parts"):
-                        return "".join(p.get("text", "") for p in cand[0]["content"]["parts"])
-                    last = f"{model}: empty response"
-                    break
-                last = f"{model}: HTTP {r.status_code} {r.text[:200]}"
-                log.warning("Gemini %s", " ".join(last.split())[:220])
-                if r.status_code in (500, 503) or (r.status_code == 429 and "quota" not in r.text.lower()):
-                    time.sleep(5 * 2 ** attempt)   # temporary overload: wait 5/10/20 s, then next model
-                    continue
-                break  # 400/403/404 -> next model
-            except requests.RequestException as e:
-                last = f"{model}: {e}"
-                time.sleep(2)
-    raise GeminiError(last)
+                notify(f"Google's AI is busy right now. Retrying in {wait}s... ({rnd + 2}/{BUSY_ROUNDS})")
+            except Exception:
+                pass
+        time.sleep(wait)
+    raise (GeminiBusy if saw_transient else GeminiError)(last)
 
 
 def _parse_json(raw: str):
