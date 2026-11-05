@@ -47,7 +47,7 @@ _TEMPLATE = """<!doctype html>
 <style>{{ css|safe }}</style></head><body>
 <h1>{{ g.title|hl }}{{ g.title_ar|ar }}</h1>
 <div class="sub">{{ g.subtitle|hl }}</div>
-{% if signature %}<div class="sig">Translated by: {{ signature }} &nbsp;|&nbsp; <span dir="rtl" lang="ar">تمت الترجمة بواسطة: {{ signature }}</span></div>{% endif %}
+{% if signature %}<div class="sig"><span>Translated by: {{ signature }}</span><span class="sar" dir="rtl" lang="ar">تمت الترجمة بواسطة: {{ signature }}</span></div>{% endif %}
 {% for s in g.sections %}
 <h2>{{ loop.index }}. {{ s.heading|hl }}{{ s.heading_ar|ar }}</h2>
 {% for b in s.blocks %}
@@ -83,18 +83,19 @@ def render_html(guide: StudyGuide, images: Optional[dict] = None, signature: str
     return _tpl.render(g=guide, css=C.build_css(guide.theme), images=_data_uris(images), signature=signature.strip())
 
 
-def _footer(signature: str) -> str:
-    """Small footer on every page: translator signature (if any) + page numbers."""
+def _footer(signature: str, color: str = "#0b3d6b") -> str:
+    """Footer on every page: translator signature chip (if any) + page numbers."""
     sig = ""
     if signature.strip():
         name = html_escape(signature.strip())
-        sig = f"Translated by: {name} &nbsp;|&nbsp; تمت الترجمة بواسطة: {name}"
-    return ('<div style="width:100%;font-size:8px;color:#666;padding:0 15mm;display:flex;'
-            'justify-content:space-between;font-family:Arial,sans-serif">'
+        sig = (f'<span style="background:{color};color:#fff;padding:2px 10px;border-radius:10px;font-weight:bold;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
+               f'Translated by: {name} &nbsp;|&nbsp; تمت الترجمة بواسطة: {name}</span>')
+    return ('<div style="width:100%;font-size:10px;color:#555;padding:0 15mm;-webkit-print-color-adjust:exact;display:flex;'
+            'justify-content:space-between;align-items:center;font-family:Arial,sans-serif">'
             f'<span>{sig}</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>')
 
 
-def html_to_pdf(html: str, out_path: str, signature: str = "") -> str:
+def html_to_pdf(html: str, out_path: str, signature: str = "", color: str = "#0b3d6b") -> str:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
@@ -104,11 +105,11 @@ def html_to_pdf(html: str, out_path: str, signature: str = "") -> str:
             page.set_content(html, wait_until="load")
             page.pdf(path=out_path, format="A4", print_background=True, prefer_css_page_size=True,
                      display_header_footer=True, header_template="<div></div>",
-                     footer_template=_footer(signature))
+                     footer_template=_footer(signature, color))
         finally:
             browser.close()
     return out_path
 
 
 def render_pdf(guide: StudyGuide, out_path: str, images: Optional[dict] = None, signature: str = "") -> str:
-    return html_to_pdf(render_html(guide, images, signature), out_path, signature)
+    return html_to_pdf(render_html(guide, images, signature), out_path, signature, C.THEMES.get(guide.theme, C.THEMES["blue"])[0])

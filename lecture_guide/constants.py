@@ -73,7 +73,8 @@ FIXED_CSS = """
 body{font-family:"Liberation Sans",Arial,Helvetica,sans-serif;font-size:11.5pt;line-height:1.5;color:#1a1a1a}
 h1{font-size:22pt;margin:0 0 2pt;color:#0b3d6b}
 .sub{color:#555;font-size:10pt;margin-bottom:8pt;border-bottom:3px solid #0b3d6b;padding-bottom:8pt}
-.sig{font-size:9.5pt;color:#0b3d6b;background:#f3f7fb;border:1px solid #9bbbd8;border-radius:3pt;padding:3pt 8pt;margin:0 0 12pt;display:inline-block}
+.sig{display:flex;justify-content:space-between;align-items:center;gap:12pt;background:#0b3d6b;color:#fff;border-radius:6pt;padding:8pt 14pt;margin:0 0 14pt;font-size:13pt;font-weight:bold;page-break-inside:avoid}
+.sig .sar{direction:rtl;font-family:"Noto Sans Arabic","Noto Naskh Arabic","Segoe UI",Tahoma,Arial,sans-serif;font-size:13pt}
 h2{font-size:15pt;background:#0b3d6b;color:#fff;padding:5pt 10pt;border-radius:4pt;margin:18pt 0 8pt;page-break-after:avoid}
 h3{font-size:12.5pt;color:#0b3d6b;border-bottom:1.5px solid #9bbbd8;padding-bottom:2pt;margin:12pt 0 6pt;page-break-after:avoid}
 strong{font-weight:bold;color:#0b3d6b}
