@@ -50,7 +50,7 @@ def build_pdf(src_path: str, out_pdf: str, progress: Callable[[str], None] = lam
 
 
 def handle_lecture(tg: Telegram, chat_id: int, file_id: str, file_name: str, file_size: int,
-                   caption: Optional[str] = None):
+                   caption: Optional[str] = None, signature: Optional[str] = None):
     """Full Telegram flow. Never raises: errors are reported to the chat."""
     status = tg.send_message(chat_id, "Reading...")
     mid = status["message_id"] if status else None
@@ -71,7 +71,8 @@ def handle_lecture(tg: Telegram, chat_id: int, file_id: str, file_name: str, fil
             ex = extract_any(src, ocr=ocr_image, progress=progress)
             guide = generate_study_guide(ex, progress)
             progress("Rendering PDF...")
-            _doctor, signature = parse_caption(caption)
+            if signature is None:           # not chosen in the bot: fall back to caption line 2
+                signature = parse_caption(caption)[1]
             render_pdf(guide, out_pdf, ex.images, signature)
 
             safe_title = filing.safe_name(guide.title, "Study Guide")

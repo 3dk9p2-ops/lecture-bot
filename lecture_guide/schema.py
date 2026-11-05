@@ -95,4 +95,12 @@ class StudyGuide(_B):
     title: str
     title_ar: str = ""
     subtitle: str = ""
+    theme: str = "blue"
     sections: List[Section] = Field(min_length=1)
+
+    @field_validator("theme", mode="before")
+    @classmethod
+    def _theme(cls, v):
+        from .constants import THEMES
+        v = str(v or "blue").strip().lower()
+        return v if v in THEMES else "blue"

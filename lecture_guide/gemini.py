@@ -175,6 +175,7 @@ def generate_study_guide(ex: Extracted, progress: Callable[[str], None] = lambda
 
     merged = StudyGuide(
         title=guides[0].title, title_ar=guides[0].title_ar, subtitle=guides[0].subtitle,
+        theme=guides[0].theme,
         sections=[s for g in guides for s in g.sections if not _is_revision(s.heading)] or guides[0].sections)
     revision = None
     if n == 1:

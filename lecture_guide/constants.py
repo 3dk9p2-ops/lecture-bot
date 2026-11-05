@@ -25,6 +25,7 @@ SYSTEM_PROMPT = (
 
 SCHEMA_DESCRIPTION = """JSON schema (return exactly this shape, nothing else):
 { "title": str, "title_ar": str, "subtitle": str,
+  "theme": one of "blue" | "teal" | "green" | "purple" | "crimson" | "brown" | "slate",
   "sections": [ { "heading": str, "heading_ar": str, "blocks": [ block, ... ] } ] }
 Block types (field "type"). Every "ar" field is the LITERAL Arabic translation of the English text next to it:
 - {"type":"paragraph","text":str,"ar":str}
@@ -37,6 +38,7 @@ Block types (field "type"). Every "ar" field is the LITERAL Arabic translation o
 - {"type":"warning_box","text":str,"ar":str}               (discard / never / danger rules)
 - {"type":"formula","formula":str,"example":str,"example_ar":str}
 - {"type":"image","image_id":"img_N","caption":str,"caption_ar":str}
+Pick "theme" (the page color scheme) from the lecture's subject: hematology / blood / transfusion -> crimson; microbiology / bacteriology / parasitology / virology -> green; clinical chemistry / biochemistry / enzymes -> purple; immunology / serology -> teal; histology / pathology / cytology -> brown; physics / instruments / general or unsure -> blue; anatomy / physiology / other -> slate.
 Do not number the section headings (numbering is added automatically).
 The LAST section must be headed "Quick Revision" (heading_ar "مراجعة سريعة") with one bullets block of 6-10 one-line points (with items_ar)."""
 
@@ -91,23 +93,46 @@ td:first-child{font-weight:bold}
 /* --- bilingual + figures --- */
 h1,h2,h3{break-after:avoid-page}
 h2+*,h3+*{break-before:avoid-page}
-.ar{direction:rtl;text-align:right;unicode-bidi:plaintext;font-family:"Noto Naskh Arabic","Noto Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif;font-size:12.5pt;line-height:1.8;color:#222;background:#f4f6f9;border-right:4px solid #5b7a99;border-radius:3pt;padding:4pt 9pt;margin:4pt 0 6pt}
+h1,h2,h3{break-inside:avoid}
+.ar{direction:rtl;text-align:right;unicode-bidi:plaintext;font-family:"Noto Sans Arabic","Noto Naskh Arabic","Segoe UI",Tahoma,Arial,sans-serif;font-size:11pt;line-height:1.95;color:#222;background:#f4f6f9;border-right:4px solid #5b7a99;border-radius:3pt;padding:3pt 10pt;margin:4pt 0 7pt}
 li{break-inside:avoid}
 p{break-inside:avoid}
-li .ar{font-size:12pt;padding:2pt 8pt;margin:2pt 0 5pt}
+li .ar{font-size:10.5pt;padding:2pt 9pt;margin:2pt 0 5pt}
 h1 .ar,h2 .ar,h3 .ar{display:block;font-weight:normal;font-size:.85em;background:none;border:0;padding:0;margin:2pt 0 0}
 h2 .ar{color:#dbe8f5}
 h1 .ar{color:#444}
 h3 .ar{color:#3d5a73}
 .key .ar,.box .ar,.red .ar{background:none;border-right:0;border-top:1px dashed #bbb;border-radius:0;margin:5pt 0 0;padding:4pt 0 0}
-td .ar,th .ar{font-size:10.5pt;line-height:1.55;background:none;border:0;padding:0;margin:1pt 0 0}
+td .ar,th .ar{font-size:10pt;line-height:1.6;background:none;border:0;padding:0;margin:1pt 0 0}
 th .ar{color:#dbe8f5}
 td:first-child .ar{font-weight:normal}
 figure{margin:8pt 0;text-align:center;page-break-inside:avoid}
 figure img{max-width:100%;max-height:105mm;border:1px solid #9bbbd8;border-radius:3pt}
 figcaption{font-size:9.5pt;color:#444;margin-top:3pt}
-figcaption .ar{text-align:center;font-size:11pt;background:none;border:0}
+figcaption .ar{text-align:center;font-size:10.5pt;background:none;border:0}
 """
+
+# Color themes: each base color in FIXED_CSS is swapped for the chosen theme's color.
+_BASE = {"primary": "#0b3d6b", "border": "#9bbbd8", "stripe": "#f3f7fb", "box": "#eef4fa",
+         "onprimary": "#dbe8f5", "accent": "#5b7a99", "accent_dark": "#3d5a73", "arbg": "#f4f6f9"}
+_KEYS = list(_BASE)
+THEMES = {
+    "blue": list(_BASE.values()),
+    "teal": ["#0f5c5c", "#9ccfcf", "#f1f9f9", "#e8f5f5", "#d4efef", "#4f8f8f", "#2f6666", "#f2f7f7"],
+    "green": ["#1b5e20", "#a5d2a8", "#f2f9f2", "#e9f5ea", "#dcf0dd", "#5d8f60", "#3c6a3f", "#f3f8f3"],
+    "purple": ["#4a2a7a", "#c3b1e1", "#f6f2fb", "#efe9f8", "#e6dcf5", "#7d62a8", "#5a4380", "#f6f3fa"],
+    "crimson": ["#8b1a2b", "#e0aab3", "#fcf3f4", "#f9e9eb", "#f6dadd", "#a8566a", "#7d3a4b", "#faf4f5"],
+    "brown": ["#5d4037", "#cdb4aa", "#faf5f3", "#f5ece8", "#eadad4", "#8d6e63", "#65483f", "#f8f4f2"],
+    "slate": ["#37474f", "#b0bec5", "#f4f6f7", "#eceff1", "#dfe6ea", "#78909c", "#546e7a", "#f3f5f6"],
+}
+
+
+def build_css(theme: str = "blue") -> str:
+    css = FIXED_CSS
+    for key, new in zip(_KEYS, THEMES.get(theme, THEMES["blue"])):
+        css = css.replace(_BASE[key], new)
+    return css
+
 
 # Limits
 CHUNK_CHARS = 14000              # max lecture characters per Gemini call

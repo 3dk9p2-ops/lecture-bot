@@ -38,3 +38,6 @@ ALLOWED_USER_IDS = {int(x) for x in os.environ.get("ALLOWED_USER_IDS", "").repla
 
 QUIZ_COUNT = int(os.environ.get("QUIZ_COUNT", "10"))
 STUDY_NOTES_DIR = Path(os.path.expanduser(os.environ.get("STUDY_NOTES_DIR", "~/Documents/Study Notes")))
+
+# Optional ready-made translator names shown as buttons (comma separated).
+TRANSLATOR_NAMES = [n.strip() for n in os.environ.get("TRANSLATOR_NAMES", "").replace("،", ",").split(",") if n.strip()]

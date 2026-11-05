@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import re
+from html import escape as html_escape
 from typing import Optional
 
 from jinja2 import Environment
@@ -43,7 +44,7 @@ def at(lst, i) -> str:
 
 _TEMPLATE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>{{ g.title|plain }}</title>
-<style>{{ css }}</style></head><body>
+<style>{{ css|safe }}</style></head><body>
 <h1>{{ g.title|hl }}{{ g.title_ar|ar }}</h1>
 <div class="sub">{{ g.subtitle|hl }}</div>
 {% if signature %}<div class="sig">Translated by: {{ signature }} &nbsp;|&nbsp; <span dir="rtl" lang="ar">تمت الترجمة بواسطة: {{ signature }}</span></div>{% endif %}
@@ -79,10 +80,21 @@ def _data_uris(images: Optional[dict]) -> dict:
 
 
 def render_html(guide: StudyGuide, images: Optional[dict] = None, signature: str = "") -> str:
-    return _tpl.render(g=guide, css=C.FIXED_CSS, images=_data_uris(images), signature=signature.strip())
+    return _tpl.render(g=guide, css=C.build_css(guide.theme), images=_data_uris(images), signature=signature.strip())
 
 
-def html_to_pdf(html: str, out_path: str) -> str:
+def _footer(signature: str) -> str:
+    """Small footer on every page: translator signature (if any) + page numbers."""
+    sig = ""
+    if signature.strip():
+        name = html_escape(signature.strip())
+        sig = f"Translated by: {name} &nbsp;|&nbsp; تمت الترجمة بواسطة: {name}"
+    return ('<div style="width:100%;font-size:8px;color:#666;padding:0 15mm;display:flex;'
+            'justify-content:space-between;font-family:Arial,sans-serif">'
+            f'<span>{sig}</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>')
+
+
+def html_to_pdf(html: str, out_path: str, signature: str = "") -> str:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
@@ -90,11 +102,13 @@ def html_to_pdf(html: str, out_path: str) -> str:
         try:
             page = browser.new_page()
             page.set_content(html, wait_until="load")
-            page.pdf(path=out_path, format="A4", print_background=True, prefer_css_page_size=True)
+            page.pdf(path=out_path, format="A4", print_background=True, prefer_css_page_size=True,
+                     display_header_footer=True, header_template="<div></div>",
+                     footer_template=_footer(signature))
         finally:
             browser.close()
     return out_path
 
 
 def render_pdf(guide: StudyGuide, out_path: str, images: Optional[dict] = None, signature: str = "") -> str:
-    return html_to_pdf(render_html(guide, images, signature), out_path)
+    return html_to_pdf(render_html(guide, images, signature), out_path, signature)

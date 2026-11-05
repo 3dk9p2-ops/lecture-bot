@@ -30,5 +30,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           LECTURE_BOT_TOKEN: ${{ secrets.LECTURE_BOT_TOKEN }}
           ALLOWED_USER_IDS: ${{ secrets.ALLOWED_USER_IDS }}
+          TRANSLATOR_NAMES: ${{ vars.TRANSLATOR_NAMES }}
           STUDY_NOTES_DIR: /tmp/Study_Notes
         run: timeout 345m python lecture_worker.py || true
